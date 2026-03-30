@@ -1,0 +1,15 @@
+services:
+  deploy:
+    build:
+      context: .
+      dockerfile: Dockerfile.deploy
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - AWS_DEFAULT_REGION=ap-southeast-2
+    entrypoint: []
+    # Default command runs the full deploy.
+    # Override with: docker compose -f docker-compose.deploy.yml run --rm deploy <command>
+    command: /app/scripts/deploy.sh

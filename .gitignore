@@ -1,0 +1,5 @@
+.env
+backend/layer/python/
+.aws-sam/
+__pycache__/
+*.pyc

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>ISBN Scanner</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header>
+    <h1>📚 ISBN Scanner</h1>
+    <nav>
+      <button class="tab active" data-tab="scan">Scan</button>
+      <button class="tab"        data-tab="browse">Boxes</button>
+    </nav>
+  </header>
+
+  <!-- ── SCAN TAB ──────────────────────────────────────────────── -->
+  <main id="pane-scan" class="pane active">
+
+    <section id="scanner-section">
+      <div id="viewfinder-wrap" class="hidden">
+        <video id="viewfinder" playsinline autoplay muted></video>
+        <div id="viewfinder-overlay">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+        <div id="ocr-capture-overlay" class="hidden">
+          <div class="ocr-spinner"></div>
+          <p id="ocr-status-msg">Reading…</p>
+        </div>
+        <div id="cooldown-bar"></div>
+      </div>
+      <div id="scanner-controls">
+        <button id="btn-start-scan" class="btn-primary">📷 Start Scanner</button>
+        <button id="btn-stop-scan"  class="btn-secondary hidden">■ Stop Scanner</button>
+        <button id="btn-ocr"        class="btn-secondary hidden" title="Scan cover/title page for ISBN">🔤 OCR</button>
+      </div>
+      <p id="scanner-status" class="status-hint"></p>
+    </section>
+
+    <section id="scan-meta-section">
+      <form id="scan-form">
+        <div class="field-row">
+          <label>
+            Box
+            <input id="field-box" type="text" placeholder="e.g. B12" />
+          </label>
+          <label>
+            Location
+            <input id="field-location" type="text" placeholder="e.g. Garage" list="locations-list" />
+            <datalist id="locations-list"></datalist>
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea id="field-notes" rows="2" placeholder="Optional…"></textarea>
+        </label>
+        <!-- Manual entry row -->
+        <div class="field-row manual-entry">
+          <label style="flex:1">
+            Manual barcode
+            <input id="field-barcode" type="text" placeholder="Type barcode…" />
+          </label>
+          <button type="submit" class="btn-primary" style="align-self:flex-end">Submit</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Last scan result — updates in place, never hides the camera -->
+    <section id="last-scan-section" class="hidden">
+      <h3 class="section-heading">Last scan</h3>
+      <div id="last-scan-card"></div>
+    </section>
+
+  </main>
+
+  <!-- ── BOXES TAB ──────────────────────────────────────────────── -->
+  <main id="pane-browse" class="pane hidden">
+
+    <div id="browse-header">
+      <button id="btn-back-boxes" class="btn-secondary hidden">← Boxes</button>
+      <h2 id="browse-title">Boxes</h2>
+    </div>
+
+    <div id="browse-results">
+      <p class="hint">Loading…</p>
+    </div>
+
+    <div id="browse-pagination">
+      <button id="btn-prev-page" class="btn-secondary hidden">← Prev</button>
+      <span   id="page-indicator"></span>
+      <button id="btn-next-page" class="btn-secondary hidden">Next →</button>
+    </div>
+
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="js/scanner.js"></script>
+  <script src="js/ocr.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

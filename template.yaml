@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: ISBN Scanner — serverless barcode cataloguing app
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parameters
+# ─────────────────────────────────────────────────────────────────────────────
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, prod]
+
+  OmdbApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /isbn-scanner/omdb-api-key
+    Description: OMDB API key (register free at omdbapi.com)
+
+  GoogleBooksApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /isbn-scanner/google-books-api-key
+    Description: Google Books API key (optional fallback)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Globals — applied to all Lambda functions
+# ─────────────────────────────────────────────────────────────────────────────
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Layers:
+      - !Ref DepsLayer
+    Environment:
+      Variables:
+        AWS_ACCOUNT_ID: !Ref AWS::AccountId
+        STAGE: !Ref Stage
+        SCAN_QUEUE_URL: !Ref ScanQueue
+        OMDB_API_KEY: !Ref OmdbApiKey
+        GOOGLE_BOOKS_API_KEY: !Ref GoogleBooksApiKey
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resources
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── Shared dependency layer (psycopg2, requests, boto3) ──────────────────
+  DepsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: isbn-scanner-deps
+      Description: psycopg2-binary + requests
+      ContentUri: backend/layer/
+      CompatibleRuntimes:
+        - python3.12
+      RetentionPolicy: Delete
+
+  # ── SQS queue ────────────────────────────────────────────────────────────
+  ScanQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub isbn-scanner-scan-queue-${Stage}
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ScanDLQ.Arn
+        maxReceiveCount: 3
+
+  ScanDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub isbn-scanner-scan-dlq-${Stage}
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  # ── HTTP API ─────────────────────────────────────────────────────────────
+  ScanApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [Content-Type]
+
+  # ── Lambda: scan_handler  POST /scan ─────────────────────────────────────
+  ScanHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-scan-handler-${Stage}
+      CodeUri: backend/
+      Handler: scan_handler.app.lambda_handler
+      Description: Accepts a barcode scan, writes pending record, enqueues lookup
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ScanQueue.QueueName
+      Events:
+        PostScan:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /scan
+            Method: POST
+
+  # ── Lambda: lookup_worker  SQS trigger ───────────────────────────────────
+  LookupWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-lookup-worker-${Stage}
+      CodeUri: backend/
+      Handler: lookup_worker.app.lambda_handler
+      Timeout: 60
+      Description: Reads from SQS, looks up ISBN/UPC, writes to Neon PostgreSQL
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ScanQueue.QueueName
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ScanQueue.Arn
+            BatchSize: 1
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # ── Lambda: get_scan  GET /scan/{id} ─────────────────────────────────────
+  GetScanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-get-scan-${Stage}
+      CodeUri: backend/
+      Handler: get_scan.app.lambda_handler
+      Description: Returns scan_record + item details for polling
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        GetScan:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /scan/{scan_id}
+            Method: GET
+
+  # ── Lambda: list_items  GET /items ───────────────────────────────────────
+  ListItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-list-items-${Stage}
+      CodeUri: backend/
+      Handler: list_items.app.lambda_handler
+      Description: Paginated browse of scan_records with item details
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        ListItems:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /items
+            Method: GET
+
+  # ── Lambda: list_boxes  GET /boxes ───────────────────────────────────────
+  ListBoxesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-list-boxes-${Stage}
+      CodeUri: backend/
+      Handler: boxes.app.lambda_handler
+      Description: Returns distinct boxes with item counts
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        ListBoxes:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /boxes
+            Method: GET
+
+  # ── S3 frontend bucket ───────────────────────────────────────────────────
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub isbn-scanner-frontend-${AWS::AccountId}-${Stage}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}"
+
+  # ── CloudFront distribution ───────────────────────────────────────────────
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub isbn-scanner-oac-${Stage}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Outputs
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+  ApiUrl:
+    Description: API Gateway base URL
+    Value: !Sub "https://${ScanApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  FrontendUrl:
+    Description: CloudFront URL for the web app
+    Value: !Sub "https://${FrontendDistribution.DomainName}"
+
+  FrontendBucket:
+    Description: S3 bucket name for the frontend
+    Value: !Ref FrontendBucket
+
+  ScanQueueUrl:
+    Description: SQS queue URL
+    Value: !Ref ScanQueue
