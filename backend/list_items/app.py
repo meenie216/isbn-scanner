@@ -58,7 +58,7 @@ def lambda_handler(event, context):
             total = cur.fetchone()["n"]
 
             # Explicit column list avoids duplicate-name overwrite when LEFT JOINing
-            # both books and dvds (they share column names like id, title, created_at).
+            # multiple item tables (they share column names like id, title, created_at).
             cur.execute(
                 f"""
                 SELECT
@@ -71,6 +71,7 @@ def lambda_handler(event, context):
                     s.status      AS scan_status,
                     s.error_msg,
                     s.scanned_at,
+                    -- book columns
                     b.isbn,
                     b.title       AS book_title,
                     b.authors,
@@ -78,15 +79,30 @@ def lambda_handler(event, context):
                     b.published_year,
                     b.genres      AS book_genres,
                     b.cover_url   AS book_cover_url,
+                    -- dvd columns
                     d.title       AS dvd_title,
                     d.director,
-                    d.release_year,
+                    d.release_year AS dvd_release_year,
                     d.genres      AS dvd_genres,
                     d.rating,
-                    d.cover_url   AS dvd_cover_url
+                    d.media_format,
+                    d.cover_url   AS dvd_cover_url,
+                    -- cd columns
+                    c.title       AS cd_title,
+                    c.artist,
+                    c.label,
+                    c.release_year AS cd_release_year,
+                    c.cover_url   AS cd_cover_url,
+                    -- other columns
+                    o.title       AS other_title,
+                    o.brand,
+                    o.category    AS other_category,
+                    o.cover_url   AS other_cover_url
                 FROM scan_records s
-                LEFT JOIN books b ON s.item_table = 'books' AND s.item_id = b.id
-                LEFT JOIN dvds  d ON s.item_table = 'dvds'  AND s.item_id = d.id
+                LEFT JOIN books       b ON s.item_table = 'books'       AND s.item_id = b.id
+                LEFT JOIN dvds        d ON s.item_table = 'dvds'        AND s.item_id = d.id
+                LEFT JOIN cds         c ON s.item_table = 'cds'         AND s.item_id = c.id
+                LEFT JOIN other_items o ON s.item_table = 'other_items' AND s.item_id = o.id
                 {where}
                 ORDER BY s.scanned_at DESC
                 LIMIT %s OFFSET %s
@@ -141,10 +157,28 @@ def _format_row(row) -> dict:
             "type":         "dvd",
             "title":        r.get("dvd_title"),
             "director":     r.get("director"),
-            "release_year": r.get("release_year"),
+            "release_year": r.get("dvd_release_year"),
             "genres":       r.get("dvd_genres") or [],
             "rating":       r.get("rating"),
+            "media_format": r.get("media_format"),
             "cover_url":    r.get("dvd_cover_url"),
+        }
+    elif media_type == "cd" and r.get("cd_title"):
+        base["item"] = {
+            "type":         "cd",
+            "title":        r.get("cd_title"),
+            "artist":       r.get("artist"),
+            "label":        r.get("label"),
+            "release_year": r.get("cd_release_year"),
+            "cover_url":    r.get("cd_cover_url"),
+        }
+    elif media_type == "other" and r.get("other_title"):
+        base["item"] = {
+            "type":     "other",
+            "title":    r.get("other_title"),
+            "brand":    r.get("brand"),
+            "category": r.get("other_category"),
+            "cover_url": r.get("other_cover_url"),
         }
 
     return base

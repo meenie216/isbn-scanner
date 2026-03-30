@@ -213,12 +213,17 @@ function pollScan(scanId, attempts, barcode) {
 function renderLastScan(scan) {
   const item = scan.item;
   if (scan.status === "found" && item) {
+    const typeEmoji = { book: "📚", dvd: "🎬", cd: "🎵", other: "📦" }[item.type] || "📦";
     const cover    = item.cover_url
       ? `<img class="result-cover" src="${esc(item.cover_url)}" alt="" loading="lazy" />`
-      : `<div class="result-cover-placeholder">${item.type === "book" ? "📚" : "🎬"}</div>`;
-    const subtitle = item.type === "book"
-      ? esc((item.authors || []).join(", "))
-      : esc([item.director, item.release_year].filter(Boolean).join(" · "));
+      : `<div class="result-cover-placeholder">${typeEmoji}</div>`;
+
+    let subtitle = "";
+    if (item.type === "book")  subtitle = esc((item.authors || []).join(", "));
+    if (item.type === "dvd")   subtitle = esc([item.director, item.release_year, item.media_format].filter(Boolean).join(" · "));
+    if (item.type === "cd")    subtitle = esc([item.artist, item.label].filter(Boolean).join(" · "));
+    if (item.type === "other") subtitle = esc([item.brand, item.category].filter(Boolean).join(" · "));
+
     lastScanCard.innerHTML = `
       <div class="result-found last-scan-inner">
         ${cover}
@@ -341,9 +346,11 @@ async function loadBoxItems() {
 
 function renderItemCard(scan) {
   const item   = scan.item || {};
-  const isBook = scan.media_type === "book";
-  const emoji  = isBook ? "📚" : "🎬";
-  const badge  = `<span class="browse-card-badge ${isBook ? "badge-book" : "badge-dvd"}">${isBook ? "Book" : "DVD"}</span>`;
+  const type   = scan.media_type || "other";
+  const emojis = { book: "📚", dvd: "🎬", cd: "🎵", other: "📦" };
+  const labels = { book: "Book", dvd: "DVD", cd: "CD", other: "Other" };
+  const emoji  = emojis[type] || "📦";
+  const badge  = `<span class="browse-card-badge badge-${type}">${labels[type] || type}</span>`;
   const statusBadge = scan.status !== "found"
     ? `<span class="browse-card-badge badge-error">${esc(scan.status)}</span>` : "";
 
@@ -352,9 +359,11 @@ function renderItemCard(scan) {
     : `<div class="browse-card-placeholder">${emoji}</div>`;
 
   const title = esc(item.title || scan.barcode);
-  const sub   = isBook
-    ? esc((item.authors || []).join(", "))
-    : esc(item.director || "");
+  let sub = "";
+  if (type === "book") sub = esc((item.authors || []).join(", "));
+  if (type === "dvd")  sub = esc([item.director, item.media_format].filter(Boolean).join(" · "));
+  if (type === "cd")   sub = esc([item.artist, item.label].filter(Boolean).join(" · "));
+  if (type === "other") sub = esc([item.brand, item.category].filter(Boolean).join(" · "));
 
   return `<div class="browse-card">
     ${img}

@@ -65,7 +65,7 @@ def lambda_handler(event, context):
 
 
 def _fetch_item(conn, table: str, item_id: str) -> dict | None:
-    if table not in ("books", "dvds"):
+    if table not in ("books", "dvds", "cds", "other_items"):
         return None
     try:
         with conn.cursor() as cur:

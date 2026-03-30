@@ -233,8 +233,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--border);
   margin-right: 4px;
 }
-.badge-book { background: #e8f0fe; color: #1a73e8; }
-.badge-dvd  { background: #fce8e6; color: #d93025; }
+.badge-book  { background: #e8f0fe; color: #1a73e8; }
+.badge-dvd   { background: #fce8e6; color: #d93025; }
+.badge-cd    { background: #e6f4ea; color: #188038; }
+.badge-other { background: #fef7e0; color: #b06000; }
 
 .hint { color: var(--muted); font-size: .9rem; }
 

@@ -1,12 +1,19 @@
 -- ISBN Scanner schema
--- Run once against your Neon database to initialise tables.
+-- Run against your Neon database to initialise / reset tables.
+-- WARNING: DROP statements will destroy all existing data.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+DROP TABLE IF EXISTS scan_records;
+DROP TABLE IF EXISTS books;
+DROP TABLE IF EXISTS dvds;
+DROP TABLE IF EXISTS cds;
+DROP TABLE IF EXISTS other_items;
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Books (populated from Open Library / Google Books)
 -- ──────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS books (
+CREATE TABLE books (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     isbn           TEXT        UNIQUE NOT NULL,
     title          TEXT        NOT NULL,
@@ -23,9 +30,9 @@ CREATE TABLE IF NOT EXISTS books (
 );
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- DVDs / Blu-ray / other video media (populated from OMDB / TMDB)
+-- DVDs / Blu-ray / video media (populated from UPC Item DB)
 -- ──────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS dvds (
+CREATE TABLE dvds (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     barcode        TEXT        UNIQUE NOT NULL,
     title          TEXT        NOT NULL,
@@ -35,33 +42,65 @@ CREATE TABLE IF NOT EXISTS dvds (
     release_year   INTEGER,
     genres         TEXT[]      DEFAULT '{}',
     runtime_mins   INTEGER,
-    rating         TEXT,       -- PG, R, 12A, etc.
-    media_format   TEXT,       -- DVD | Blu-ray | 4K UHD | VHS | Other
+    rating         TEXT,
+    media_format   TEXT,       -- DVD | Blu-ray | 4K UHD | VHS
     description    TEXT,
     cover_url      TEXT,
-    source         TEXT,       -- 'omdb' | 'tmdb'
+    source         TEXT,
+    created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- CDs / music (populated from UPC Item DB)
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE TABLE cds (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    barcode        TEXT        UNIQUE NOT NULL,
+    title          TEXT        NOT NULL,
+    artist         TEXT,
+    label          TEXT,       -- record label (from UPC brand field)
+    release_year   INTEGER,
+    genres         TEXT[]      DEFAULT '{}',
+    description    TEXT,
+    cover_url      TEXT,
+    source         TEXT,
+    created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Other items — anything not categorised as book / dvd / cd
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE TABLE other_items (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    barcode        TEXT        UNIQUE NOT NULL,
+    title          TEXT        NOT NULL,
+    brand          TEXT,
+    category       TEXT,       -- raw UPC Item DB category string
+    description    TEXT,
+    cover_url      TEXT,
+    source         TEXT,
     created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Scan records — one row per barcode scan attempt
 -- ──────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS scan_records (
+CREATE TABLE scan_records (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     barcode     TEXT        NOT NULL,
     box_number  TEXT,
     location    TEXT,
     notes       TEXT,
-    media_type  TEXT,                       -- 'book' | 'dvd' | 'unknown'
+    media_type  TEXT,       -- 'book' | 'dvd' | 'cd' | 'other' | 'unknown'
     status      TEXT        NOT NULL DEFAULT 'pending',
-                                            -- pending | found | not_found | error
-    item_id     UUID,                       -- FK to books.id or dvds.id
-    item_table  TEXT,                       -- 'books' | 'dvds'
+                            -- pending | found | not_found | error
+    item_id     UUID,       -- FK to books/dvds/cds/other_items
+    item_table  TEXT,       -- 'books' | 'dvds' | 'cds' | 'other_items'
     error_msg   TEXT,
     scanned_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_scan_records_location    ON scan_records (location, box_number);
-CREATE INDEX IF NOT EXISTS idx_scan_records_status      ON scan_records (status);
-CREATE INDEX IF NOT EXISTS idx_scan_records_barcode     ON scan_records (barcode);
-CREATE INDEX IF NOT EXISTS idx_scan_records_scanned_at  ON scan_records (scanned_at DESC);
+CREATE INDEX idx_scan_records_location   ON scan_records (location, box_number);
+CREATE INDEX idx_scan_records_status     ON scan_records (status);
+CREATE INDEX idx_scan_records_barcode    ON scan_records (barcode);
+CREATE INDEX idx_scan_records_scanned_at ON scan_records (scanned_at DESC);
