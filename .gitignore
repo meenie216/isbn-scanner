@@ -3,3 +3,4 @@ backend/layer/python/
 .aws-sam/
 __pycache__/
 *.pyc
+frontend/js/config.js
