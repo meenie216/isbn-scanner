@@ -419,7 +419,14 @@ browseResults.addEventListener("click", async (e) => {
   if (ok) {
     btn.closest(".browse-card").remove();
     const remaining = browseResults.querySelectorAll(".browse-card").length;
-    if (remaining === 0) browseResults.innerHTML = '<p class="hint">No items in this box.</p>';
+    if (remaining === 0) {
+      browseResults.innerHTML = '<p class="hint">No items in this box.</p>';
+      pageInd.textContent = "";
+    } else {
+      const current = parseInt(pageInd.textContent) || remaining + 1;
+      const newTotal = current - 1;
+      pageInd.textContent = `${newTotal} item${newTotal !== 1 ? "s" : ""}`;
+    }
   } else {
     btn.disabled = false;
     btn.textContent = "🗑";
