@@ -87,7 +87,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins:
           - "*"
-        AllowMethods: [GET, POST, OPTIONS]
+        AllowMethods: [GET, POST, DELETE, OPTIONS]
         AllowHeaders: [Content-Type]
 
   # ── Lambda: scan_handler  POST /scan ─────────────────────────────────────
