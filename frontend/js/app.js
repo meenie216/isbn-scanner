@@ -51,6 +51,7 @@ const statusHint   = $("#scanner-status");
 const cooldownBar  = $("#cooldown-bar");
 const lastScanSec  = $("#last-scan-section");
 const lastScanCard = $("#last-scan-card");
+const scanToast    = $("#scan-toast");
 
 // ─── Scan feedback: sound + flash ────────────────────────────────────────────
 let _audioCtx = null;
@@ -78,6 +79,36 @@ function playScanBeep() {
 function triggerScanFlash() {
   scanFlash.classList.add("flashing");
   setTimeout(() => scanFlash.classList.remove("flashing"), 120);
+}
+
+let _toastTimer = null;
+function showScanToast(scan) {
+  const item = scan.item;
+  let html = "";
+  if (scan.status === "found" && item) {
+    const typeEmoji = { book: "📚", dvd: "🎬", cd: "🎵", other: "📦" }[item.type] || "📦";
+    const coverHtml = item.cover_url
+      ? `<img class="toast-cover" src="${esc(item.cover_url)}" alt="" />`
+      : `<span class="toast-emoji">${typeEmoji}</span>`;
+    let sub = "";
+    if (item.type === "book")  sub = esc((item.authors || []).slice(0, 1).join(""));
+    if (item.type === "dvd")   sub = esc([item.director, item.release_year].filter(Boolean).join(" · "));
+    if (item.type === "cd")    sub = esc([item.artist, item.release_year].filter(Boolean).join(" · "));
+    if (item.type === "other") sub = esc(item.category || "");
+    html = `${coverHtml}<div class="toast-body"><span class="toast-title">${esc(item.title)}</span>${sub ? `<span class="toast-sub">${sub}</span>` : ""}</div>`;
+  } else if (scan.status === "not_found") {
+    html = `<span class="toast-emoji">❓</span><div class="toast-body"><span class="toast-title">Not found</span><span class="toast-sub">${esc(scan.barcode)}</span></div>`;
+  } else {
+    html = `<span class="toast-emoji">⚠️</span><div class="toast-body"><span class="toast-title">Lookup failed</span></div>`;
+  }
+  scanToast.innerHTML = html;
+  scanToast.classList.remove("hidden", "toast-hide");
+  scanToast.classList.add("toast-show");
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    scanToast.classList.replace("toast-show", "toast-hide");
+    setTimeout(() => scanToast.classList.add("hidden"), 400);
+  }, 4000);
 }
 
 let lastBarcode   = null;
@@ -242,6 +273,7 @@ function pollScan(scanId, attempts, barcode) {
 }
 
 function renderLastScan(scan) {
+  showScanToast(scan);
   const item = scan.item;
   if (scan.status === "found" && item) {
     const typeEmoji = { book: "📚", dvd: "🎬", cd: "🎵", other: "📦" }[item.type] || "📦";
