@@ -30,7 +30,7 @@ CREATE TABLE books (
 );
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- DVDs / Blu-ray / video media (populated from UPC Item DB)
+-- DVDs / Blu-ray / video media (populated from UPC Item DB, enriched by TMDB)
 -- ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE dvds (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,23 +47,26 @@ CREATE TABLE dvds (
     description    TEXT,
     cover_url      TEXT,
     source         TEXT,
+    enriched       BOOLEAN     DEFAULT false,
     created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- CDs / music (populated from UPC Item DB)
+-- CDs / music (populated from UPC Item DB, enriched by MusicBrainz)
 -- ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE cds (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     barcode        TEXT        UNIQUE NOT NULL,
     title          TEXT        NOT NULL,
     artist         TEXT,
-    label          TEXT,       -- record label (from UPC brand field)
+    label          TEXT,
     release_year   INTEGER,
     genres         TEXT[]      DEFAULT '{}',
+    track_listing  TEXT[]      DEFAULT '{}',
     description    TEXT,
     cover_url      TEXT,
     source         TEXT,
+    enriched       BOOLEAN     DEFAULT false,
     created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 

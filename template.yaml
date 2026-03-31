@@ -22,6 +22,11 @@ Parameters:
     Default: /isbn-scanner/google-books-api-key
     Description: Google Books API key (optional fallback)
 
+  TmdbApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /isbn-scanner/tmdb-api-key
+    Description: TMDB API key (register free at themoviedb.org)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Globals — applied to all Lambda functions
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,6 +44,7 @@ Globals:
         SCAN_QUEUE_URL: !Ref ScanQueue
         OMDB_API_KEY: !Ref OmdbApiKey
         GOOGLE_BOOKS_API_KEY: !Ref GoogleBooksApiKey
+        TMDB_API_KEY: !Ref TmdbApiKey
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Resources
@@ -184,6 +190,28 @@ Resources:
             ApiId: !Ref ScanApi
             Path: /boxes
             Method: GET
+
+  # ── Lambda: enrichment_worker  EventBridge schedule ─────────────────────
+  EnrichmentWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-enrichment-worker-${Stage}
+      CodeUri: backend/
+      Handler: enrichment_worker.app.lambda_handler
+      Timeout: 120        # up to 10 CDs × ~10s each + overhead
+      Description: Background enrichment of DVDs (TMDB) and CDs (MusicBrainz)
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/tmdb-api-key
+      Events:
+        EnrichSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Enrich un-enriched DVDs and CDs every 5 minutes
+            Enabled: true
 
   # ── S3 frontend bucket ───────────────────────────────────────────────────
   FrontendBucket:

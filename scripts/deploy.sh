@@ -16,7 +16,7 @@ echo ""
 : "${AWS_ACCESS_KEY_ID:?  Missing AWS_ACCESS_KEY_ID in .env}"
 : "${AWS_SECRET_ACCESS_KEY:?  Missing AWS_SECRET_ACCESS_KEY in .env}"
 : "${NEON_DB_URL:?  Missing NEON_DB_URL in .env}"
-: "${OMDB_API_KEY:?  Missing OMDB_API_KEY in .env}"
+: "${TMDB_API_KEY:?  Missing TMDB_API_KEY in .env}"
 
 GOOGLE_KEY="${GOOGLE_BOOKS_API_KEY:-none}"
 
@@ -34,8 +34,8 @@ aws ssm put-parameter \
   --region "${REGION}" > /dev/null
 
 aws ssm put-parameter \
-  --name "/isbn-scanner/omdb-api-key" \
-  --value "${OMDB_API_KEY}" \
+  --name "/isbn-scanner/tmdb-api-key" \
+  --value "${TMDB_API_KEY}" \
   --type String \
   --overwrite \
   --region "${REGION}" > /dev/null
