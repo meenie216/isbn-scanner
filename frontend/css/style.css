@@ -211,10 +211,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   padding: 12px 14px;
   box-shadow: var(--shadow);
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 48px 1fr auto;
   gap: 10px;
   align-items: start;
 }
+.browse-card-body { min-width: 0; }
 .browse-card img { width: 48px; border-radius: 4px; }
 .browse-card-placeholder {
   width: 48px; height: 64px;
@@ -237,6 +238,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .badge-dvd   { background: #fce8e6; color: #d93025; }
 .badge-cd    { background: #e6f4ea; color: #188038; }
 .badge-other { background: #fef7e0; color: #b06000; }
+
+.btn-delete-scan {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  opacity: 0.35;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
+  align-self: center;
+}
+.btn-delete-scan:hover { opacity: 1; background: rgba(217,48,37,0.1); }
+.btn-delete-scan:disabled { cursor: default; opacity: 0.2; }
 
 .hint { color: var(--muted); font-size: .9rem; }
 

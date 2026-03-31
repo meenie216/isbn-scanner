@@ -407,6 +407,26 @@ async function loadBoxItems() {
   pageInd.textContent = `${data.total} item${data.total !== 1 ? "s" : ""}`;
 }
 
+browseResults.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn-delete-scan");
+  if (!btn) return;
+  const scanId = btn.dataset.scanId;
+  if (!scanId) return;
+  if (!confirm("Delete this entry?")) return;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  const { ok, data } = await apiFetch(`/scan/${encodeURIComponent(scanId)}`, { method: "DELETE" });
+  if (ok) {
+    btn.closest(".browse-card").remove();
+    const remaining = browseResults.querySelectorAll(".browse-card").length;
+    if (remaining === 0) browseResults.innerHTML = '<p class="hint">No items in this box.</p>';
+  } else {
+    btn.disabled = false;
+    btn.textContent = "🗑";
+    alert(`Delete failed: ${data?.error || "unknown error"}`);
+  }
+});
+
 function renderItemCard(scan) {
   const item   = scan.item || {};
   const type   = scan.media_type || "other";
@@ -428,11 +448,12 @@ function renderItemCard(scan) {
   if (type === "cd")   sub = esc([item.artist, item.label].filter(Boolean).join(" · "));
   if (type === "other") sub = esc([item.brand, item.category].filter(Boolean).join(" · "));
 
-  return `<div class="browse-card">
+  return `<div class="browse-card" data-scan-id="${esc(scan.scan_id)}">
     ${img}
-    <div>
+    <div class="browse-card-body">
       <div class="browse-card-title">${badge}${statusBadge}${title}</div>
       <div class="browse-card-meta">${sub}</div>
     </div>
+    <button class="btn-delete-scan" title="Delete this entry" aria-label="Delete" data-scan-id="${esc(scan.scan_id)}">🗑</button>
   </div>`;
 }

@@ -191,6 +191,25 @@ Resources:
             Path: /boxes
             Method: GET
 
+  # ── Lambda: delete_scan  DELETE /scan/{scan_id} ───────────────────────────
+  DeleteScanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-delete-scan-${Stage}
+      CodeUri: backend/
+      Handler: delete_scan.app.lambda_handler
+      Description: Deletes a scan record (and orphaned item) by ID
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        DeleteScan:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /scan/{scan_id}
+            Method: DELETE
+
   # ── Lambda: enrichment_worker  EventBridge schedule ─────────────────────
   EnrichmentWorkerFunction:
     Type: AWS::Serverless::Function
