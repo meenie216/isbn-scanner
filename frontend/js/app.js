@@ -41,6 +41,7 @@ document.querySelectorAll(".tab").forEach(btn => {
 // ─────────────────────────────────────────────────────────────────────────────
 const videoEl      = $("#viewfinder");
 const viewfinderW  = $("#viewfinder-wrap");
+const scanFlash    = $("#scan-flash");
 const btnStart     = $("#btn-start-scan");
 const btnStop      = $("#btn-stop-scan");
 const btnOcr       = $("#btn-ocr");
@@ -50,6 +51,34 @@ const statusHint   = $("#scanner-status");
 const cooldownBar  = $("#cooldown-bar");
 const lastScanSec  = $("#last-scan-section");
 const lastScanCard = $("#last-scan-card");
+
+// ─── Scan feedback: sound + flash ────────────────────────────────────────────
+let _audioCtx = null;
+function _getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+
+function playScanBeep() {
+  try {
+    const ctx  = _getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.value = 1200;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+  } catch (_) {}
+}
+
+function triggerScanFlash() {
+  scanFlash.classList.add("flashing");
+  setTimeout(() => scanFlash.classList.remove("flashing"), 120);
+}
 
 let lastBarcode   = null;
 let cooldownTimer = null;
@@ -67,6 +96,8 @@ btnStart.addEventListener("click", async () => {
       if (inCooldown || barcode === lastBarcode) return;
       lastBarcode = barcode;
       inCooldown  = true;
+      playScanBeep();
+      triggerScanFlash();
       startCooldownBar();
       submitBarcode(barcode);
       cooldownTimer = setTimeout(() => {

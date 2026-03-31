@@ -305,6 +305,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border-radius: 0 0 var(--radius) var(--radius);
 }
 
+/* Scan success flash */
+#scan-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  border-radius: var(--radius);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease-out;
+}
+#scan-flash.flashing {
+  opacity: 0.75;
+  transition: none;
+}
+
 /* OCR capture overlay — shown while Tesseract is processing */
 #ocr-capture-overlay {
   position: absolute;
