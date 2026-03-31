@@ -53,13 +53,17 @@ def _is_book_isbn(barcode: str) -> bool:
 
 # ── UPC category → media type ─────────────────────────────────────────────────
 
-# Keys are substrings to match (case-insensitive) in UPC Item DB's category field
+# Keys are substrings to match (case-insensitive) in UPC Item DB's category field.
+# Order matters — more specific entries first.
 _CATEGORY_MAP = {
-    "music":       "cd",
-    "movies & tv": "dvd",
-    "movie":       "dvd",
-    "blu-ray":     "dvd",
-    "dvd":         "dvd",
+    "sound recordings": "cd",   # Media > Music & Sound Recordings > Music CDs
+    "music cds":        "cd",
+    "media > music":    "cd",
+    "movies & tv":      "dvd",
+    "movie":            "dvd",
+    "blu-ray":          "dvd",
+    "dvd":              "dvd",
+    "media > tv":       "dvd",
 }
 
 # Title keyword fallback
