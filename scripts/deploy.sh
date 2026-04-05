@@ -101,7 +101,8 @@ fi
 
 # ── 7. Inject API URL into config.js ─────────────────────────────────────────
 echo "▶  Writing API URL to frontend/js/config.js..."
-printf 'window.API_BASE = "%s";\n' "${API_URL}" > frontend/js/config.js
+DEPLOY_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+printf 'window.API_BASE = "%s";\nwindow.DEPLOY_TIME = "%s";\n' "${API_URL}" "${DEPLOY_TIME}" > frontend/js/config.js
 echo "   ✔  API URL set: ${API_URL}"
 
 # ── 8. Upload frontend to S3 ──────────────────────────────────────────────────

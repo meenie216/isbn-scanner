@@ -60,6 +60,24 @@ async function startScanner(videoEl, onDetect, onError) {
 }
 
 /**
+ * Attempt to decode a barcode from the current video frame.
+ * Returns the barcode string, or null if none found.
+ * Used for manual tap-to-scan on Android where the continuous loop is unreliable.
+ */
+function scanCurrentFrame(videoEl) {
+  if (!_reader || !_active || !videoEl.videoWidth) return null;
+  if (!_canvas) _canvas = document.createElement("canvas");
+  _canvas.width  = videoEl.videoWidth;
+  _canvas.height = videoEl.videoHeight;
+  _canvas.getContext("2d").drawImage(videoEl, 0, 0);
+  try {
+    return _reader.decodeFromCanvas(_canvas).getText();
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
  * Stop the scanner and release the camera.
  */
 function stopScanner() {

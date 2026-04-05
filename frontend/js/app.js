@@ -36,6 +36,10 @@ document.querySelectorAll(".tab").forEach(btn => {
   });
 });
 
+if (window.DEPLOY_TIME) {
+  $("#deploy-time").textContent = `Deployed: ${new Date(window.DEPLOY_TIME).toLocaleString()}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Scan tab — continuous scanning
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,7 +176,7 @@ btnStart.addEventListener("click", async () => {
   show(btnStop);
   show(btnOcr);
   preloadOCR();   // warm up worker in background while user scans normally
-  statusHint.textContent = "Point camera at a barcode…";
+  statusHint.textContent = "Point camera at a barcode or tap viewfinder…";
 });
 
 btnStop.addEventListener("click", () => {
@@ -187,6 +191,30 @@ btnStop.addEventListener("click", () => {
   btnStart.disabled = false;
   statusHint.textContent = "";
   cooldownBar.style.width = "0%";
+});
+
+// Tap viewfinder to manually trigger a decode — fallback for Android
+viewfinderW.addEventListener("click", () => {
+  if (inCooldown) return;
+  const barcode = scanCurrentFrame(videoEl);
+  if (barcode) {
+    if (barcode === lastBarcode) return;
+    lastBarcode = barcode;
+    inCooldown  = true;
+    playScanBeep();
+    triggerScanFlash();
+    startCooldownBar();
+    submitBarcode(barcode);
+    cooldownTimer = setTimeout(() => {
+      inCooldown  = false;
+      lastBarcode = null;
+      statusHint.textContent = "Point camera at next barcode…";
+      cooldownBar.style.transition = "none";
+      cooldownBar.style.width = "0%";
+    }, COOLDOWN_MS);
+  } else {
+    statusHint.textContent = "No barcode detected — try again";
+  }
 });
 
 // ─── OCR button ─────────────────────────────────────────────────────────────

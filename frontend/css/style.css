@@ -474,3 +474,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   color: var(--muted);
   margin-top: 4px;
 }
+
+.deploy-stamp {
+  font-size: 0.7rem;
+  color: var(--border);
+  text-align: center;
+  margin-top: 24px;
+}
