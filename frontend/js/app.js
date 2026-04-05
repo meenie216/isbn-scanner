@@ -81,6 +81,24 @@ function triggerScanFlash() {
   setTimeout(() => scanFlash.classList.remove("flashing"), 120);
 }
 
+const MAX_RETRIES = 24;
+function _retryHint(retryCount) {
+  const count = retryCount ?? 0;
+  if (count >= MAX_RETRIES) return `<span class="toast-retry exhausted">Retries exhausted</span>`;
+  return `<span class="toast-retry">🔄 Will retry automatically (${count}/${MAX_RETRIES})</span>`;
+}
+function _retryHintText(retryCount) {
+  const count = retryCount ?? 0;
+  if (count >= MAX_RETRIES) return "Retries exhausted — reset via database to try again.";
+  return `🔄 Will retry automatically (${count}/${MAX_RETRIES} attempts)`;
+}
+function _retryBadge(status, retryCount) {
+  const count = retryCount ?? 0;
+  if (count >= MAX_RETRIES)
+    return `<span class="browse-card-badge badge-error" title="Retries exhausted">❌ ${esc(status)}</span>`;
+  return `<span class="browse-card-badge badge-retry" title="${count}/${MAX_RETRIES} retries used">🔄 ${esc(status)}</span>`;
+}
+
 let _toastTimer = null;
 function showScanToast(scan) {
   const item = scan.item;
@@ -97,9 +115,11 @@ function showScanToast(scan) {
     if (item.type === "other") sub = esc(item.category || "");
     html = `${coverHtml}<div class="toast-body"><span class="toast-title">${esc(item.title)}</span>${sub ? `<span class="toast-sub">${sub}</span>` : ""}</div>`;
   } else if (scan.status === "not_found") {
-    html = `<span class="toast-emoji">❓</span><div class="toast-body"><span class="toast-title">Not found</span><span class="toast-sub">${esc(scan.barcode)}</span></div>`;
+    const retryHint = _retryHint(scan.retry_count);
+    html = `<span class="toast-emoji">❓</span><div class="toast-body"><span class="toast-title">Not found</span><span class="toast-sub">${esc(scan.barcode)}</span>${retryHint}</div>`;
   } else {
-    html = `<span class="toast-emoji">⚠️</span><div class="toast-body"><span class="toast-title">Lookup failed</span></div>`;
+    const retryHint = _retryHint(scan.retry_count);
+    html = `<span class="toast-emoji">⚠️</span><div class="toast-body"><span class="toast-title">Lookup failed</span>${retryHint}</div>`;
   }
   scanToast.innerHTML = html;
   scanToast.classList.remove("hidden", "toast-hide");
@@ -224,8 +244,15 @@ function startCooldownBar() {
   });
 }
 
+// Box field gates the Start Scanner button
+const fieldBox = $("#field-box");
+function updateStartBtn() {
+  btnStart.disabled = fieldBox.value.trim() === "";
+}
+fieldBox.addEventListener("input", updateStartBtn);
+
 // Manual form submit (typed barcode)
-$("#scan-form").addEventListener("submit", (e) => {
+$("#manual-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const barcode = $("#field-barcode").value.trim();
   if (!barcode) return;
@@ -299,11 +326,13 @@ function renderLastScan(scan) {
   } else if (scan.status === "not_found") {
     lastScanCard.innerHTML = `<div class="result-not-found last-scan-inner">
       <p class="result-title">Not found</p>
-      <p class="result-meta">Barcode: ${esc(scan.barcode)} — saved but no details found.</p></div>`;
+      <p class="result-meta">Barcode: ${esc(scan.barcode)} — saved but no details found.</p>
+      <p class="result-retry">${_retryHintText(scan.retry_count)}</p></div>`;
   } else {
     lastScanCard.innerHTML = `<div class="result-not-found last-scan-inner">
       <p class="result-title">Error</p>
-      <p class="result-meta">${esc(scan.error_msg || "Lookup failed")}</p></div>`;
+      <p class="result-meta">${esc(scan.error_msg || "Lookup failed")}</p>
+      <p class="result-retry">${_retryHintText(scan.retry_count)}</p></div>`;
   }
 }
 
@@ -386,12 +415,13 @@ btnPrev.addEventListener("click", () => { if (browsePage > 1) { browsePage--; lo
 btnNext.addEventListener("click", () => { browsePage++; loadBoxItems(); });
 
 async function loadBoxItems() {
-  browseTitle.textContent = `Box: ${browseBox}`;
+  browseTitle.textContent = browseLocation ? `Box: ${browseBox} · ${browseLocation}` : `Box: ${browseBox}`;
   show(btnBack);
   browseResults.innerHTML = '<p class="hint">Loading…</p>';
   hide(btnPrev); hide(btnNext); pageInd.textContent = "";
 
   const params = new URLSearchParams({ box: browseBox, page: browsePage, page_size: 20 });
+  if (browseLocation) params.set("location", browseLocation);
   const { ok, data } = await apiFetch(`/items?${params}`);
 
   if (!ok) { browseResults.innerHTML = `<p class="hint">Error: ${esc(data.error)}</p>`; return; }
@@ -442,7 +472,7 @@ function renderItemCard(scan) {
   const emoji  = emojis[type] || "📦";
   const badge  = `<span class="browse-card-badge badge-${type}">${labels[type] || type}</span>`;
   const statusBadge = scan.status !== "found"
-    ? `<span class="browse-card-badge badge-error">${esc(scan.status)}</span>` : "";
+    ? _retryBadge(scan.status, scan.retry_count) : "";
 
   const img = item.cover_url
     ? `<img src="${esc(item.cover_url)}" alt="" loading="lazy" />`

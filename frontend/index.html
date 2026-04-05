@@ -19,6 +19,26 @@
   <!-- ── SCAN TAB ──────────────────────────────────────────────── -->
   <main id="pane-scan" class="pane active">
 
+    <section id="scan-meta-section">
+      <form id="scan-form">
+        <div class="field-row">
+          <label>
+            Box <span class="required">*</span>
+            <input id="field-box" type="text" placeholder="e.g. B12" required />
+          </label>
+          <label>
+            Location
+            <input id="field-location" type="text" placeholder="e.g. Garage" list="locations-list" />
+            <datalist id="locations-list"></datalist>
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea id="field-notes" rows="2" placeholder="Optional…"></textarea>
+        </label>
+      </form>
+    </section>
+
     <section id="scanner-section">
       <div id="viewfinder-wrap" class="hidden">
         <video id="viewfinder" playsinline autoplay muted></video>
@@ -34,7 +54,7 @@
         <div id="cooldown-bar"></div>
       </div>
       <div id="scanner-controls">
-        <button id="btn-start-scan" class="btn-primary">📷 Start Scanner</button>
+        <button id="btn-start-scan" class="btn-primary" disabled>📷 Start Scanner</button>
         <button id="btn-stop-scan"  class="btn-secondary hidden">■ Stop Scanner</button>
         <button id="btn-ocr"        class="btn-secondary hidden" title="Scan cover/title page for ISBN">🔤 OCR</button>
       </div>
@@ -42,24 +62,8 @@
       <div id="scan-toast" class="hidden" aria-live="polite"></div>
     </section>
 
-    <section id="scan-meta-section">
-      <form id="scan-form">
-        <div class="field-row">
-          <label>
-            Box
-            <input id="field-box" type="text" placeholder="e.g. B12" />
-          </label>
-          <label>
-            Location
-            <input id="field-location" type="text" placeholder="e.g. Garage" list="locations-list" />
-            <datalist id="locations-list"></datalist>
-          </label>
-        </div>
-        <label>
-          Notes
-          <textarea id="field-notes" rows="2" placeholder="Optional…"></textarea>
-        </label>
-        <!-- Manual entry row -->
+    <section id="manual-entry-section">
+      <form id="manual-form">
         <div class="field-row manual-entry">
           <label style="flex:1">
             Manual barcode

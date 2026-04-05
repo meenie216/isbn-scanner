@@ -281,6 +281,17 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .manual-entry { margin-top: 4px; align-items: flex-end; }
 
+#manual-entry-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.required {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
 .section-heading {
   font-size: .85rem;
   font-weight: 600;
@@ -398,6 +409,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.toast-retry {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.toast-retry.exhausted {
+  color: var(--danger);
+}
 
 /* OCR capture overlay — shown while Tesseract is processing */
 #ocr-capture-overlay {
@@ -452,4 +471,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .box-meta   { font-size: .82rem; color: var(--muted); }
 .box-chevron { font-size: 1.4rem; color: var(--muted); }
 
-.badge-error { background: #fce8e6; color: #d93025; }
+.badge-error  { background: #fce8e6; color: #d93025; }
+.badge-retry  { background: #e8f0fe; color: #1a73e8; }
+
+.result-retry {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
