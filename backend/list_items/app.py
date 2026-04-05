@@ -43,8 +43,8 @@ def lambda_handler(event, context):
         params.append(status)
 
     if location:
-        filters.append("s.location ILIKE %s")
-        params.append(f"{location}%")
+        filters.append("s.location = %s")
+        params.append(location)
     if box:
         filters.append("s.box_number = %s")
         params.append(box)
@@ -71,6 +71,7 @@ def lambda_handler(event, context):
                     s.status      AS scan_status,
                     s.error_msg,
                     s.scanned_at,
+                    s.retry_count,
                     -- book columns
                     b.isbn,
                     b.title       AS book_title,
@@ -138,6 +139,7 @@ def _format_row(row) -> dict:
         "media_type": media_type,
         "status":     r.get("scan_status"),
         "error_msg":  r.get("error_msg"),
+        "retry_count": r.get("retry_count", 0),
         "scanned_at": r["scanned_at"].isoformat() if r.get("scanned_at") else None,
         "item":       None,
     }

@@ -44,16 +44,17 @@ def lambda_handler(event, context):
         return _resp(404, {"error": "Scan record not found"})
 
     result = {
-        "scan_id":    str(row["id"]),
-        "barcode":    row["barcode"],
-        "status":     row["status"],
-        "media_type": row["media_type"],
-        "box_number": row["box_number"],
-        "location":   row["location"],
-        "notes":      row["notes"],
-        "scanned_at": row["scanned_at"].isoformat() if row["scanned_at"] else None,
-        "error_msg":  row["error_msg"],
-        "item":       None,
+        "scan_id":        str(row["id"]),
+        "barcode":        row["barcode"],
+        "status":         row["status"],
+        "media_type":     row["media_type"],
+        "box_number":     row["box_number"],
+        "location":       row["location"],
+        "notes":          row["notes"],
+        "scanned_at":     row["scanned_at"].isoformat() if row["scanned_at"] else None,
+        "error_msg":      row["error_msg"],
+        "retry_count":    row["retry_count"],
+        "item":           None,
     }
 
     if row["status"] == "found" and row["item_id"] and row["item_table"]:
