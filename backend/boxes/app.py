@@ -15,7 +15,7 @@ def lambda_handler(event, context):
             cur.execute("""
                 SELECT
                     COALESCE(box_number, '(no box)') AS box_number,
-                    COALESCE(location, '')            AS location,
+                    location,
                     COUNT(*)                          AS item_count,
                     MAX(scanned_at)                   AS last_scanned
                 FROM scan_records
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
     boxes = [
         {
             "box_number":   r["box_number"],
-            "location":     r["location"],
+            "location":     r["location"] or "",
             "item_count":   r["item_count"],
             "last_scanned": r["last_scanned"].isoformat() if r["last_scanned"] else None,
         }

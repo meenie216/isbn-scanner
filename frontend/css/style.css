@@ -287,11 +287,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border-top: 1px solid var(--border);
 }
 
-.required {
-  color: var(--danger);
-  margin-left: 2px;
-}
-
 .section-heading {
   font-size: .85rem;
   font-weight: 600;

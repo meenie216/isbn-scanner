@@ -23,7 +23,8 @@ DEFAULT_PAGE_SIZE = 20
 def lambda_handler(event, context):
     qs = event.get("queryStringParameters") or {}
 
-    location  = (qs.get("location") or "").strip() or None
+    location_raw = qs.get("location")
+    location     = location_raw.strip() if location_raw is not None else None
     box       = (qs.get("box")      or "").strip() or None
     status    = (qs.get("status")   or "all").strip()
 
@@ -45,6 +46,9 @@ def lambda_handler(event, context):
     if location:
         filters.append("s.location = %s")
         params.append(location)
+    elif location is not None:
+        # empty string passed — match rows with null location
+        filters.append("s.location IS NULL")
     if box:
         filters.append("s.box_number = %s")
         params.append(box)
