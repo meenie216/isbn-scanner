@@ -85,6 +85,45 @@ function triggerScanFlash() {
   setTimeout(() => scanFlash.classList.remove("flashing"), 120);
 }
 
+function triggerCaptureFlash() {
+  scanFlash.classList.add("capturing");
+  setTimeout(() => scanFlash.classList.remove("capturing"), 250);
+}
+
+function playCaptureClick() {
+  try {
+    const ctx  = _getAudioCtx();
+    const buf  = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.3;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  } catch (_) {}
+}
+
+function hideScanToast() {
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+  scanToast.classList.add("hidden");
+  scanToast.classList.remove("toast-show", "toast-hide");
+}
+
+function showNoDetectToast() {
+  scanToast.innerHTML = `<span class="toast-emoji">📷</span><div class="toast-body"><span class="toast-title">No barcode detected</span><span class="toast-sub">Tap again or hold steady</span></div>`;
+  scanToast.classList.remove("hidden", "toast-hide");
+  scanToast.classList.add("toast-show");
+  _toastTimer = setTimeout(() => {
+    scanToast.classList.replace("toast-show", "toast-hide");
+    setTimeout(() => scanToast.classList.add("hidden"), 400);
+  }, 2000);
+}
+
 const MAX_RETRIES = 24;
 function _retryHint(retryCount) {
   const count = retryCount ?? 0;
@@ -196,6 +235,12 @@ btnStop.addEventListener("click", () => {
 // Tap viewfinder to manually trigger a decode — fallback for Android
 viewfinderW.addEventListener("click", () => {
   if (inCooldown) return;
+  // Immediate feedback so the user knows the tap registered
+  triggerCaptureFlash();
+  playCaptureClick();
+  hideScanToast();
+  statusHint.textContent = "Scanning…";
+
   const barcode = scanCurrentFrame(videoEl);
   if (barcode) {
     if (barcode === lastBarcode) return;
@@ -208,12 +253,13 @@ viewfinderW.addEventListener("click", () => {
     cooldownTimer = setTimeout(() => {
       inCooldown  = false;
       lastBarcode = null;
-      statusHint.textContent = "Point camera at next barcode…";
+      statusHint.textContent = "Point camera at next barcode or tap viewfinder…";
       cooldownBar.style.transition = "none";
       cooldownBar.style.width = "0%";
     }, COOLDOWN_MS);
   } else {
-    statusHint.textContent = "No barcode detected — try again";
+    statusHint.textContent = "Point camera at a barcode or tap viewfinder…";
+    showNoDetectToast();
   }
 });
 

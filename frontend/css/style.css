@@ -70,6 +70,9 @@ nav { display: flex; gap: 4px; }
   overflow: hidden;
   aspect-ratio: 4/3;
   max-height: 40vh;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 #viewfinder {
@@ -339,6 +342,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 #scan-flash.flashing {
   opacity: 0.75;
+  transition: none;
+}
+#scan-flash.capturing {
+  opacity: 1;
   transition: none;
 }
 
