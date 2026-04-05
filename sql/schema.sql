@@ -107,3 +107,15 @@ CREATE INDEX idx_scan_records_location   ON scan_records (location, box_number);
 CREATE INDEX idx_scan_records_status     ON scan_records (status);
 CREATE INDEX idx_scan_records_barcode    ON scan_records (barcode);
 CREATE INDEX idx_scan_records_scanned_at ON scan_records (scanned_at DESC);
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Migration: retry support on scan_records
+-- Run this against existing databases (schema.sql DROP/CREATE handles new ones)
+-- ──────────────────────────────────────────────────────────────────────────────
+ALTER TABLE scan_records
+    ADD COLUMN IF NOT EXISTS retry_count    INTEGER     NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_retried_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_scan_records_retry
+    ON scan_records (status, retry_count, last_retried_at)
+    WHERE status IN ('not_found', 'error');

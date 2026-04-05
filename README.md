@@ -45,6 +45,8 @@ Browser (S3 + CloudFront)
    psql "postgresql://..." -f sql/schema.sql
    ```
 
+> **Existing databases:** If you already have the schema applied, run the migration at the bottom of `sql/schema.sql` to add retry columns to `scan_records`.
+
 ### 2. Store secrets in AWS SSM Parameter Store
 
 ```bash

@@ -232,6 +232,26 @@ Resources:
             Description: Enrich un-enriched DVDs and CDs every 5 minutes
             Enabled: true
 
+  # ── Lambda: retry_worker  EventBridge schedule ──────────────────────────
+  RetryWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-retry-worker-${Stage}
+      CodeUri: backend/
+      Handler: retry_worker.app.lambda_handler
+      Timeout: 120        # 20 items × up to 5s each + overhead
+      Description: Hourly retry of failed lookups so items self-heal when APIs recover
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        RetrySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+            Description: Retry failed barcode lookups every hour
+            Enabled: true
+
   # ── S3 frontend bucket ───────────────────────────────────────────────────
   FrontendBucket:
     Type: AWS::S3::Bucket
