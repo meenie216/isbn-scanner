@@ -488,3 +488,42 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   text-align: center;
   margin-top: 24px;
 }
+
+/* ── Search tab ─────────────────────────────────────────────────────────── */
+#search-bar {
+  margin-bottom: 12px;
+}
+
+#search-input {
+  width: 100%;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-sizing: border-box;
+}
+#search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+#search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+#search-page-indicator {
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.browse-card-location {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 3px;
+}

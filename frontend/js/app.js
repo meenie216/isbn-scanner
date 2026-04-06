@@ -568,3 +568,92 @@ function renderItemCard(scan) {
     <button class="btn-delete-scan" title="Delete this entry" aria-label="Delete" data-scan-id="${esc(scan.scan_id)}">🗑</button>
   </div>`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Search tab
+// ─────────────────────────────────────────────────────────────────────────────
+const searchInput   = $("#search-input");
+const searchResults = $("#search-results");
+const searchPageInd = $("#search-page-indicator");
+const btnSearchPrev = $("#btn-search-prev");
+const btnSearchNext = $("#btn-search-next");
+
+let searchPage    = 1;
+let searchQuery   = "";
+let _searchTimer  = null;
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(_searchTimer);
+  const q = searchInput.value.trim();
+  if (q.length < 2) {
+    searchResults.innerHTML = '<p class="hint">Start typing to search your collection.</p>';
+    hide(btnSearchPrev); hide(btnSearchNext);
+    searchPageInd.textContent = "";
+    return;
+  }
+  _searchTimer = setTimeout(() => {
+    searchQuery = q;
+    searchPage  = 1;
+    runSearch();
+  }, 350);
+});
+
+btnSearchPrev.addEventListener("click", () => { if (searchPage > 1) { searchPage--; runSearch(); } });
+btnSearchNext.addEventListener("click", () => { searchPage++; runSearch(); });
+
+async function runSearch() {
+  searchResults.innerHTML = '<p class="hint">Searching…</p>';
+  hide(btnSearchPrev); hide(btnSearchNext);
+  searchPageInd.textContent = "";
+
+  const params = new URLSearchParams({ q: searchQuery, page: searchPage, page_size: 20 });
+  const { ok, data } = await apiFetch(`/search?${params}`);
+
+  if (!ok) {
+    searchResults.innerHTML = `<p class="hint">Error: ${esc(data.error || "Search failed")}</p>`;
+    return;
+  }
+
+  if (!data.items?.length) {
+    searchResults.innerHTML = `<p class="hint">No results for "${esc(searchQuery)}".</p>`;
+    return;
+  }
+
+  searchResults.innerHTML = data.items.map(renderSearchCard).join("");
+
+  const { page, total_pages, total } = data;
+  searchPageInd.textContent = `${total} result${total !== 1 ? "s" : ""}${total_pages > 1 ? ` · page ${page}/${total_pages}` : ""}`;
+  page > 1        ? show(btnSearchPrev) : hide(btnSearchPrev);
+  page < total_pages ? show(btnSearchNext) : hide(btnSearchNext);
+}
+
+function renderSearchCard(scan) {
+  const item   = scan.item || {};
+  const type   = scan.media_type || "other";
+  const emojis = { book: "📚", dvd: "🎬", cd: "🎵", other: "📦" };
+  const labels = { book: "Book", dvd: "DVD", cd: "CD", other: "Other" };
+  const emoji  = emojis[type] || "📦";
+  const badge  = `<span class="browse-card-badge badge-${type}">${labels[type] || type}</span>`;
+
+  const img = item.cover_url
+    ? `<img src="${esc(item.cover_url)}" alt="" loading="lazy" />`
+    : `<div class="browse-card-placeholder">${emoji}</div>`;
+
+  const title = esc(item.title || scan.barcode);
+  let sub = "";
+  if (type === "book") sub = esc((item.authors || []).join(", "));
+  if (type === "dvd")  sub = esc([item.director, item.media_format].filter(Boolean).join(" · "));
+  if (type === "cd")   sub = esc([item.artist, item.label].filter(Boolean).join(" · "));
+  if (type === "other") sub = esc([item.brand].filter(Boolean).join(" · "));
+
+  const location = [scan.box_number, scan.location].filter(Boolean).join(" · ");
+
+  return `<div class="browse-card">
+    ${img}
+    <div class="browse-card-body">
+      <div class="browse-card-title">${badge}${title}</div>
+      <div class="browse-card-meta">${sub}</div>
+      ${location ? `<div class="browse-card-location">📦 ${esc(location)}</div>` : ""}
+    </div>
+  </div>`;
+}

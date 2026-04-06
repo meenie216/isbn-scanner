@@ -210,6 +210,25 @@ Resources:
             Path: /scan/{scan_id}
             Method: DELETE
 
+  # ── Lambda: search  GET /search ─────────────────────────────────────────
+  SearchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-search-${Stage}
+      CodeUri: backend/
+      Handler: search.app.lambda_handler
+      Description: Full-text search across books, DVDs, CDs and other items
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        Search:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /search
+            Method: GET
+
   # ── Lambda: enrichment_worker  EventBridge schedule ─────────────────────
   EnrichmentWorkerFunction:
     Type: AWS::Serverless::Function

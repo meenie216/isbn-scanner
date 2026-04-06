@@ -13,6 +13,7 @@
     <nav>
       <button class="tab active" data-tab="scan">Scan</button>
       <button class="tab"        data-tab="browse">Boxes</button>
+      <button class="tab"        data-tab="search">Search</button>
     </nav>
   </header>
 
@@ -100,6 +101,25 @@
       <button id="btn-prev-page" class="btn-secondary hidden">← Prev</button>
       <span   id="page-indicator"></span>
       <button id="btn-next-page" class="btn-secondary hidden">Next →</button>
+    </div>
+
+  </main>
+
+  <!-- ── SEARCH TAB ─────────────────────────────────────────────── -->
+  <main id="pane-search" class="pane">
+
+    <div id="search-bar">
+      <input id="search-input" type="search" placeholder="Title, author, director, artist…" autocomplete="off" />
+    </div>
+
+    <div id="search-results">
+      <p class="hint">Start typing to search your collection.</p>
+    </div>
+
+    <div id="search-pagination">
+      <button id="btn-search-prev" class="btn-secondary hidden">← Prev</button>
+      <span   id="search-page-indicator"></span>
+      <button id="btn-search-next" class="btn-secondary hidden">Next →</button>
     </div>
 
   </main>
