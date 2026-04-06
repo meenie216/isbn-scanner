@@ -21,6 +21,9 @@ import requests
 OPEN_LIBRARY_URL = "https://openlibrary.org/api/books"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 UPC_ITEM_DB_URL  = "https://api.upcitemdb.com/prod/trial/lookup"
+DISCOGS_SEARCH_URL = "https://api.discogs.com/database/search"
+
+DISCOGS_USER_AGENT = "ISBNScanner/1.0"
 
 REQUEST_TIMEOUT = 8
 
@@ -214,6 +217,10 @@ def _lookup_upc(barcode: str) -> dict:
         data  = r.json()
         items = data.get("items", [])
         if not items:
+            # Fallback: try Discogs (good coverage of Australian CDs/vinyl)
+            discogs = _discogs(barcode)
+            if discogs:
+                return discogs
             raise LookupError(f"Not found for barcode {barcode}")
 
         item     = items[0]
@@ -275,3 +282,41 @@ def _lookup_upc(barcode: str) -> dict:
         raise
     except Exception as e:
         raise LookupError(f"UPC lookup failed for {barcode}: {e}")
+
+
+def _discogs(barcode: str) -> dict | None:
+    """Search Discogs by barcode. No API key required for basic search."""
+    try:
+        r = requests.get(
+            DISCOGS_SEARCH_URL,
+            params={"barcode": barcode, "per_page": 5},
+            headers={"User-Agent": DISCOGS_USER_AGENT},
+            timeout=REQUEST_TIMEOUT,
+        )
+        r.raise_for_status()
+        results = r.json().get("results", [])
+        if not results:
+            return None
+        hit = results[0]
+        title    = hit.get("title") or ""
+        labels   = hit.get("label") or []
+        label    = labels[0] if labels else None
+        genres   = hit.get("genre") or []
+        year_str = hit.get("year")
+        year     = int(year_str) if year_str and year_str.isdigit() else None
+        cover    = hit.get("cover_image") or hit.get("thumb") or None
+        artist, album = _split_cd_title(title, label)
+        return {
+            "media_type":   "cd",
+            "barcode":      barcode,
+            "title":        album,
+            "artist":       artist,
+            "label":        label,
+            "release_year": year,
+            "genres":       genres,
+            "description":  None,
+            "cover_url":    cover,
+            "source":       "discogs",
+        }
+    except Exception:
+        return None
