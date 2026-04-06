@@ -68,6 +68,29 @@ const lastScanSec  = $("#last-scan-section");
 const lastScanCard = $("#last-scan-card");
 const scanToast    = $("#scan-toast");
 
+let _scannerRunning = false;
+
+function _pauseScanner(reason) {
+  if (!_scannerRunning) return;
+  _scannerRunning = false;
+  stopScanner();
+  clearTimeout(cooldownTimer);
+  inCooldown  = false;
+  lastBarcode = null;
+  hide(viewfinderW);
+  hide(btnStop);
+  hide(btnOcr);
+  show(btnStart);
+  btnStart.disabled = false;
+  statusHint.textContent = reason;
+  cooldownBar.style.width = "0%";
+}
+
+// Stop camera when page is hidden (screen lock, app switch, tab change)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) _pauseScanner("📷 Scanner paused — tap Start to resume.");
+});
+
 // ─── Scan feedback: sound + flash ────────────────────────────────────────────
 let _audioCtx = null;
 function _getAudioCtx() {
@@ -214,13 +237,17 @@ btnStart.addEventListener("click", async () => {
       }, COOLDOWN_MS);
     },
     (err) => {
+      _scannerRunning = false;
       statusHint.textContent = `Camera error: ${err.message || err}`;
       btnStart.disabled = false;
       hide(viewfinderW);
       hide(btnStop);
       show(btnStart);
-    }
+    },
+    () => _pauseScanner("📷 Scanner paused after 60s — tap Start to resume.")
   );
+
+  _scannerRunning = true;
 
   hide(btnStart);
   show(btnStop);
@@ -229,18 +256,29 @@ btnStart.addEventListener("click", async () => {
   statusHint.textContent = "Point camera at a barcode or tap viewfinder…";
 });
 
+// Stop camera when page is hidden (screen lock, app switch, tab change)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (_active ?? false) return; // scanner.js _active not directly accessible; use btnStop visibility
+    const scannerOn = btnStop.style.display !== "none" && !btnStop.classList.contains("hidden");
+    if (scannerOn) {
+      stopScanner();
+      clearTimeout(cooldownTimer);
+      inCooldown  = false;
+      lastBarcode = null;
+      hide(viewfinderW);
+      hide(btnStop);
+      hide(btnOcr);
+      show(btnStart);
+      btnStart.disabled = false;
+      statusHint.textContent = "📷 Scanner paused — tap Start to resume.";
+      cooldownBar.style.width = "0%";
+    }
+  }
+});
+
 btnStop.addEventListener("click", () => {
-  stopScanner();
-  clearTimeout(cooldownTimer);
-  inCooldown  = false;
-  lastBarcode = null;
-  hide(viewfinderW);
-  hide(btnStop);
-  hide(btnOcr);
-  show(btnStart);
-  btnStart.disabled = false;
-  statusHint.textContent = "";
-  cooldownBar.style.width = "0%";
+  _pauseScanner("");
 });
 
 // Tap viewfinder to manually trigger a decode — fallback for Android

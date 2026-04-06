@@ -2,14 +2,29 @@
  * scanner.js — ZXing-js barcode scanning via device camera.
  *
  * Exports:
- *   startScanner(videoEl, onDetect, onError)
+ *   startScanner(videoEl, onDetect, onError, onInactive)
  *   stopScanner()
+ *   scanCurrentFrame(videoEl)
  */
 
-let _reader       = null;
-let _active       = false;
-let _pollInterval = null;
-let _canvas       = null;
+let _reader           = null;
+let _active           = false;
+let _pollInterval     = null;
+let _canvas           = null;
+let _inactivityTimer  = null;
+let _onInactive       = null;
+
+const POLL_MS       = 300;
+const INACTIVITY_MS = 60_000; // auto-pause after 60s with no detection
+
+function _resetInactivityTimer() {
+  clearTimeout(_inactivityTimer);
+  if (_onInactive) {
+    _inactivityTimer = setTimeout(() => {
+      if (_active) _onInactive();
+    }, INACTIVITY_MS);
+  }
+}
 
 /**
  * Start the barcode scanner.
@@ -18,16 +33,19 @@ let _canvas       = null;
  * fallback (required on Android Chrome, where the continuous decode callback
  * often never fires even when a barcode is visible).
  *
- * @param {HTMLVideoElement} videoEl   - The <video> element to use as viewfinder.
+ * @param {HTMLVideoElement} videoEl    - The <video> element to use as viewfinder.
  * @param {function(string)} onDetect  - Called with the decoded barcode string.
  * @param {function(Error)}  onError   - Called on permission denial or fatal error.
+ * @param {function()}       onInactive - Called after INACTIVITY_MS with no detection.
  */
-async function startScanner(videoEl, onDetect, onError) {
+async function startScanner(videoEl, onDetect, onError, onInactive) {
   if (_active) return;
+  _onInactive = onInactive || null;
 
   try {
     _reader = new ZXing.BrowserMultiFormatReader();
     _active = true;
+    _resetInactivityTimer();
 
     // Resolution hints improve decode reliability on Android.
     await _reader.decodeFromConstraints(
@@ -35,7 +53,10 @@ async function startScanner(videoEl, onDetect, onError) {
       videoEl,
       (result, err) => {
         if (!_active) return;
-        if (result) onDetect(result.getText());
+        if (result) {
+          _resetInactivityTimer();
+          onDetect(result.getText());
+        }
       }
     );
 
@@ -49,9 +70,12 @@ async function startScanner(videoEl, onDetect, onError) {
       _canvas.getContext("2d").drawImage(videoEl, 0, 0);
       try {
         const result = _reader.decodeFromCanvas(_canvas);
-        if (result) onDetect(result.getText());
+        if (result) {
+          _resetInactivityTimer();
+          onDetect(result.getText());
+        }
       } catch (_) { /* no barcode in this frame */ }
-    }, 300);
+    }, POLL_MS);
 
   } catch (err) {
     _active = false;
@@ -84,6 +108,8 @@ function scanCurrentFrame(videoEl) {
  */
 function stopScanner() {
   _active = false;
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = null;
   if (_pollInterval) {
     clearInterval(_pollInterval);
     _pollInterval = null;
