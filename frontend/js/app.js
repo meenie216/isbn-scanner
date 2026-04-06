@@ -32,9 +32,20 @@ document.querySelectorAll(".tab").forEach(btn => {
     document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`pane-${btn.dataset.tab}`).classList.add("active");
-    if (btn.dataset.tab === "browse") loadBoxList();
+    if (btn.dataset.tab === "browse")      loadBoxList();
+    if (btn.dataset.tab === "unresolved")  loadUnresolved();
   });
 });
+
+function switchTab(tabName) {
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
+  const tabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (tabBtn) tabBtn.classList.add("active");
+  const pane = document.getElementById(`pane-${tabName}`);
+  if (pane) pane.classList.add("active");
+  if (tabName === "unresolved") loadUnresolved();
+}
 
 if (window.DEPLOY_TIME) {
   $("#deploy-time").textContent = `Deployed: ${new Date(window.DEPLOY_TIME).toLocaleString()}`;
@@ -512,6 +523,11 @@ async function loadBoxItems() {
 }
 
 browseResults.addEventListener("click", async (e) => {
+  const resolveBtn = e.target.closest(".btn-browse-resolve");
+  if (resolveBtn) {
+    openResolveModal(resolveBtn.dataset.scanId, resolveBtn.dataset.barcode);
+    return;
+  }
   const btn = e.target.closest(".btn-delete-scan");
   if (!btn) return;
   const scanId = btn.dataset.scanId;
@@ -559,11 +575,16 @@ function renderItemCard(scan) {
   if (type === "cd")   sub = esc([item.artist, item.label].filter(Boolean).join(" · "));
   if (type === "other") sub = esc([item.brand, item.category].filter(Boolean).join(" · "));
 
+  const resolveLink = (scan.status === "not_found" || scan.status === "error")
+    ? `<button class="btn-browse-resolve" data-scan-id="${esc(scan.scan_id)}" data-barcode="${esc(scan.barcode)}">✏️ Resolve</button>`
+    : "";
+
   return `<div class="browse-card" data-scan-id="${esc(scan.scan_id)}">
     ${img}
     <div class="browse-card-body">
       <div class="browse-card-title">${badge}${statusBadge}${title}</div>
       <div class="browse-card-meta">${sub}</div>
+      ${resolveLink}
     </div>
     <button class="btn-delete-scan" title="Delete this entry" aria-label="Delete" data-scan-id="${esc(scan.scan_id)}">🗑</button>
   </div>`;
@@ -657,3 +678,161 @@ function renderSearchCard(scan) {
     </div>
   </div>`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unresolved tab
+// ─────────────────────────────────────────────────────────────────────────────
+const unresolvedList   = $("#unresolved-list");
+const unresolvedHint   = $("#unresolved-hint");
+const unresolvedPageInd = $("#unresolved-page-indicator");
+const btnUnresPrev     = $("#btn-unresolved-prev");
+const btnUnresNext     = $("#btn-unresolved-next");
+
+let unresolvedPage = 1;
+
+async function loadUnresolved() {
+  unresolvedList.innerHTML = '<p class="hint">Loading…</p>';
+  hide(btnUnresPrev); hide(btnUnresNext);
+  unresolvedPageInd.textContent = "";
+
+  const params = new URLSearchParams({ page: unresolvedPage, page_size: 20 });
+  const { ok, data } = await apiFetch(`/failed?${params}`);
+
+  if (!ok) {
+    unresolvedList.innerHTML = `<p class="hint">Error loading unresolved items.</p>`;
+    return;
+  }
+
+  const { items, total, page, total_pages } = data;
+  unresolvedHint.textContent = total
+    ? `${total} item${total !== 1 ? "s" : ""} couldn't be looked up automatically.`
+    : "No unresolved items — everything has been found! 🎉";
+
+  if (!items.length) { unresolvedList.innerHTML = ""; return; }
+
+  unresolvedList.innerHTML = items.map(renderUnresolvedCard).join("");
+
+  unresolvedPageInd.textContent = total_pages > 1 ? `page ${page}/${total_pages}` : "";
+  page > 1         ? show(btnUnresPrev) : hide(btnUnresPrev);
+  page < total_pages ? show(btnUnresNext) : hide(btnUnresNext);
+}
+
+btnUnresPrev.addEventListener("click", () => { unresolvedPage--; loadUnresolved(); });
+btnUnresNext.addEventListener("click", () => { unresolvedPage++; loadUnresolved(); });
+
+function renderUnresolvedCard(scan) {
+  const retries = scan.retry_count || 0;
+  const retryText = retries >= 24
+    ? `<span class="badge badge-error">Retries exhausted</span>`
+    : `<span class="badge badge-retry">🔄 ${retries}/24 retries</span>`;
+  const loc = [scan.box_number, scan.location].filter(Boolean).join(" · ");
+  const date = scan.scanned_at ? new Date(scan.scanned_at).toLocaleDateString() : "";
+
+  return `<div class="unresolved-card" id="ures-${esc(scan.scan_id)}">
+    <div class="unresolved-card-info">
+      <span class="unresolved-barcode">${esc(scan.barcode)}</span>
+      ${loc ? `<span class="unresolved-loc">📦 ${esc(loc)}</span>` : ""}
+      ${date ? `<span class="unresolved-date">${date}</span>` : ""}
+      ${retryText}
+    </div>
+    <button class="btn-resolve" data-scan-id="${esc(scan.scan_id)}" data-barcode="${esc(scan.barcode)}">✏️ Resolve</button>
+  </div>`;
+}
+
+unresolvedList.addEventListener("click", e => {
+  const btn = e.target.closest(".btn-resolve");
+  if (btn) openResolveModal(btn.dataset.scanId, btn.dataset.barcode);
+});
+
+// Called from browse cards too
+function openResolveModal(scanId, barcode) {
+  switchTab("unresolved");
+  $("#resolve-barcode-label").textContent = barcode;
+  const modal = $("#resolve-modal");
+  modal.dataset.scanId  = scanId;
+  modal.dataset.barcode = barcode;
+  $("#resolve-title").value = "";
+  $("#resolve-authors").value = "";
+  $("#resolve-publisher").value = "";
+  $("#resolve-director").value = "";
+  $("#resolve-artist").value = "";
+  $("#resolve-label").value = "";
+  $("#resolve-brand").value = "";
+  $("#resolve-category").value = "";
+  $("#resolve-year").value = "";
+  $("#resolve-cover-url").value = "";
+  $("#resolve-error").classList.add("hidden");
+  updateResolveFields();
+  show($("#resolve-modal"));
+}
+
+function updateResolveFields() {
+  const type = $("#resolve-type").value;
+  $("#resolve-fields-book").classList.toggle("hidden",  type !== "book");
+  $("#resolve-fields-dvd").classList.toggle("hidden",   type !== "dvd");
+  $("#resolve-fields-cd").classList.toggle("hidden",    type !== "cd");
+  $("#resolve-fields-other").classList.toggle("hidden", type !== "other");
+}
+
+$("#resolve-type").addEventListener("change", updateResolveFields);
+
+$("#resolve-modal-backdrop").addEventListener("click", closeResolveModal);
+$("#btn-resolve-cancel").addEventListener("click",     closeResolveModal);
+
+function closeResolveModal() {
+  hide($("#resolve-modal"));
+}
+
+$("#btn-resolve-submit").addEventListener("click", async () => {
+  const modal = $("#resolve-modal");
+  const scanId = modal.dataset.scanId;
+  const type   = $("#resolve-type").value;
+  const title  = $("#resolve-title").value.trim();
+  const errEl  = $("#resolve-error");
+
+  if (!title) {
+    errEl.textContent = "Title is required.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const body = {
+    scan_id:    scanId,
+    media_type: type,
+    title,
+    year:       $("#resolve-year").value ? parseInt($("#resolve-year").value) : null,
+    cover_url:  $("#resolve-cover-url").value.trim() || null,
+  };
+
+  if (type === "book") {
+    body.authors   = $("#resolve-authors").value.trim();
+    body.publisher = $("#resolve-publisher").value.trim();
+  } else if (type === "dvd") {
+    body.director    = $("#resolve-director").value.trim();
+    body.media_format = $("#resolve-format").value;
+  } else if (type === "cd") {
+    body.artist = $("#resolve-artist").value.trim();
+    body.label  = $("#resolve-label").value.trim();
+  } else {
+    body.brand    = $("#resolve-brand").value.trim();
+    body.category = $("#resolve-category").value.trim();
+  }
+
+  $("#btn-resolve-submit").disabled = true;
+  const { ok, data } = await apiFetch("/manual", { method: "POST", body: JSON.stringify(body) });
+  $("#btn-resolve-submit").disabled = false;
+
+  if (!ok) {
+    errEl.textContent = data.error || "Save failed.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  closeResolveModal();
+  // Remove all cards with the same barcode and reload totals
+  const barcode = modal.dataset.barcode;
+  document.querySelectorAll(".unresolved-card").forEach(card => {
+    if (card.querySelector(".btn-resolve")?.dataset.barcode === barcode) card.remove();
+  });
+  loadUnresolved();
+});

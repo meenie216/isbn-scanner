@@ -229,6 +229,44 @@ Resources:
             Path: /search
             Method: GET
 
+  # ── Lambda: list_failed  GET /failed ─────────────────────────────────────
+  ListFailedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-list-failed-${Stage}
+      CodeUri: backend/
+      Handler: list_failed.app.lambda_handler
+      Description: Returns paginated not_found/error scan records for manual resolution
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        ListFailed:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /failed
+            Method: GET
+
+  # ── Lambda: manual  POST /manual ─────────────────────────────────────────
+  ManualResolveFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub isbn-scanner-manual-${Stage}
+      CodeUri: backend/
+      Handler: manual.app.lambda_handler
+      Description: Manually resolves a failed scan record with user-supplied item details
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: isbn-scanner/db-url
+      Events:
+        ManualResolve:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ScanApi
+            Path: /manual
+            Method: POST
+
   # ── Lambda: enrichment_worker  EventBridge schedule ─────────────────────
   EnrichmentWorkerFunction:
     Type: AWS::Serverless::Function

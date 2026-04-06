@@ -14,6 +14,7 @@
       <button class="tab active" data-tab="scan">Scan</button>
       <button class="tab"        data-tab="browse">Boxes</button>
       <button class="tab"        data-tab="search">Search</button>
+      <button class="tab"        data-tab="unresolved">Unresolved</button>
     </nav>
   </header>
 
@@ -120,6 +121,74 @@
       <button id="btn-search-prev" class="btn-secondary hidden">← Prev</button>
       <span   id="search-page-indicator"></span>
       <button id="btn-search-next" class="btn-secondary hidden">Next →</button>
+    </div>
+
+  </main>
+
+  <!-- ── UNRESOLVED TAB ────────────────────────────────────────────── -->
+  <main id="pane-unresolved" class="pane">
+
+    <h2>Unresolved Scans</h2>
+    <p class="hint" id="unresolved-hint">Items that couldn't be looked up automatically.</p>
+
+    <div id="unresolved-list"></div>
+
+    <div id="unresolved-pagination">
+      <button id="btn-unresolved-prev" class="btn-secondary hidden">← Prev</button>
+      <span   id="unresolved-page-indicator"></span>
+      <button id="btn-unresolved-next" class="btn-secondary hidden">Next →</button>
+    </div>
+
+    <!-- Inline resolve form (hidden until a card's Resolve button is clicked) -->
+    <div id="resolve-modal" class="hidden">
+      <div id="resolve-modal-backdrop"></div>
+      <div id="resolve-modal-box">
+        <h3>Resolve: <span id="resolve-barcode-label"></span></h3>
+
+        <label>Type
+          <select id="resolve-type">
+            <option value="book">📚 Book</option>
+            <option value="dvd">🎬 DVD / Blu-ray</option>
+            <option value="cd">🎵 CD</option>
+            <option value="other">📦 Other</option>
+          </select>
+        </label>
+
+        <label>Title *<input id="resolve-title" type="text" placeholder="Title" /></label>
+
+        <div id="resolve-fields-book">
+          <label>Author(s) <input id="resolve-authors" type="text" placeholder="Comma-separated" /></label>
+          <label>Publisher <input id="resolve-publisher" type="text" placeholder="Publisher" /></label>
+        </div>
+        <div id="resolve-fields-dvd" class="hidden">
+          <label>Director <input id="resolve-director" type="text" placeholder="Director" /></label>
+          <label>Format
+            <select id="resolve-format">
+              <option>DVD</option>
+              <option>Blu-ray</option>
+              <option>4K UHD</option>
+              <option>VHS</option>
+            </select>
+          </label>
+        </div>
+        <div id="resolve-fields-cd" class="hidden">
+          <label>Artist <input id="resolve-artist" type="text" placeholder="Artist" /></label>
+          <label>Label  <input id="resolve-label"  type="text" placeholder="Label" /></label>
+        </div>
+        <div id="resolve-fields-other" class="hidden">
+          <label>Brand    <input id="resolve-brand"    type="text" placeholder="Brand" /></label>
+          <label>Category <input id="resolve-category" type="text" placeholder="Category" /></label>
+        </div>
+
+        <label>Year      <input id="resolve-year"      type="number" placeholder="e.g. 2003" min="1800" max="2099" /></label>
+        <label>Cover URL <input id="resolve-cover-url" type="url"    placeholder="https://…" /></label>
+
+        <div id="resolve-actions">
+          <button id="btn-resolve-cancel"  class="btn-secondary">Cancel</button>
+          <button id="btn-resolve-submit"  class="btn-primary">Save</button>
+        </div>
+        <p id="resolve-error" class="hint hidden"></p>
+      </div>
     </div>
 
   </main>

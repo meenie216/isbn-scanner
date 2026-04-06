@@ -527,3 +527,140 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   color: var(--muted);
   margin-top: 3px;
 }
+
+/* ── Unresolved tab ──────────────────────────────────────────────────────── */
+#pane-unresolved h2 {
+  margin: 0 0 4px;
+}
+
+.unresolved-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.unresolved-card-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.unresolved-barcode {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.unresolved-loc,
+.unresolved-date {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.btn-resolve {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-resolve:hover { background: var(--primary); color: #fff; }
+
+#unresolved-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+#unresolved-page-indicator {
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+/* ── Resolve modal ───────────────────────────────────────────────────────── */
+#resolve-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#resolve-modal.hidden { display: none; }
+
+#resolve-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+}
+
+#resolve-modal-box {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: min(480px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#resolve-modal-box h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+#resolve-modal-box label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 3px;
+}
+
+#resolve-modal-box input,
+#resolve-modal-box select {
+  font-size: 0.95rem;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+
+#resolve-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Resolve link on browse cards */
+.btn-browse-resolve {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  margin-top: 4px;
+  display: inline-block;
+}
+.btn-browse-resolve:hover { background: var(--primary); color: #fff; }
