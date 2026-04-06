@@ -30,17 +30,30 @@ class LookupError(Exception):
 
 
 def lookup(barcode: str) -> dict:
-    barcode = barcode.strip()
+    barcode = _normalise_barcode(barcode.strip())
     if _is_book_isbn(barcode):
         return _lookup_book(barcode)
     return _lookup_upc(barcode)
 
 
 def is_book(barcode: str) -> bool:
-    return _is_book_isbn(barcode.strip())
+    return _is_book_isbn(_normalise_barcode(barcode.strip()))
 
 
 # ── Barcode type detection ────────────────────────────────────────────────────
+
+def _normalise_barcode(barcode: str) -> str:
+    """Normalise edge-case barcode formats before classification.
+
+    SBN (Standard Book Number) is the 9-digit predecessor to ISBN-10.
+    Prepending '0' converts it to a valid ISBN-10; the check digit is
+    compatible so no recomputation is needed.
+    """
+    bc = re.sub(r"[^0-9X]", "", barcode.upper())
+    if len(bc) == 9:
+        return "0" + bc
+    return barcode
+
 
 def _is_book_isbn(barcode: str) -> bool:
     bc = re.sub(r"[^0-9X]", "", barcode.upper())
