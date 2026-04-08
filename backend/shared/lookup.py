@@ -18,9 +18,10 @@ import os
 import re
 import requests
 
-OPEN_LIBRARY_URL = "https://openlibrary.org/api/books"
-GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
-UPC_ITEM_DB_URL  = "https://api.upcitemdb.com/prod/trial/lookup"
+OPEN_LIBRARY_URL  = "https://openlibrary.org/api/books"
+GOOGLE_BOOKS_URL  = "https://www.googleapis.com/books/v1/volumes"
+UPC_ITEM_DB_URL   = "https://api.upcitemdb.com/prod/trial/lookup"
+TROVE_URL         = "https://api.trove.nla.gov.au/v3/result"
 DISCOGS_SEARCH_URL = "https://api.discogs.com/database/search"
 
 DISCOGS_USER_AGENT = "ISBNScanner/1.0"
@@ -128,6 +129,9 @@ def _lookup_book(barcode: str) -> dict:
     result = _google_books(barcode)
     if result:
         return result
+    result = _trove(barcode)
+    if result:
+        return result
     raise LookupError(f"Book not found for barcode {barcode}")
 
 
@@ -203,6 +207,82 @@ def _google_books(barcode: str) -> dict | None:
             "description":    info.get("description"),
             "cover_url":      cover,
             "source":         "google_books",
+        }
+    except Exception:
+        return None
+
+
+def _trove(barcode: str) -> dict | None:
+    """Search Trove (National Library of Australia) by ISBN.
+
+    Best coverage for niche Australian titles that Open Library and Google Books miss.
+    API docs: https://trove.nla.gov.au/about/create-something/using-api
+    Rate limit: generous for keyed requests (~100 req/sec).
+    """
+    api_key = os.environ.get("TROVE_API_KEY")
+    if not api_key or api_key == "none":
+        return None
+    try:
+        r = requests.get(
+            TROVE_URL,
+            params={
+                "q":        f"isbn:{barcode}",
+                "category": "book",
+                "encoding": "json",
+                "key":      api_key,
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        # Navigate: response → category[0] → records → work[]
+        categories = data.get("category") or []
+        if not categories:
+            return None
+        records = categories[0].get("records") or {}
+        works = records.get("work") or []
+        if not works:
+            return None
+
+        work = works[0]
+        title = work.get("title") or ""
+        # Remove trailing year in parens common in Trove: "My Book (2003)"
+        title = re.sub(r"\s*\(\d{4}\)\s*$", "", title).strip()
+
+        # contributors can be a list of strings or dicts
+        raw_contributors = work.get("contributor") or []
+        authors = []
+        for c in raw_contributors:
+            if isinstance(c, str):
+                authors.append(c)
+            elif isinstance(c, dict):
+                authors.append(c.get("value") or c.get("name") or "")
+        authors = [a for a in authors if a]
+
+        # issued is typically "2005" or "2005-01-01"
+        issued = work.get("issued") or ""
+        year = None
+        m = re.search(r"\b(\d{4})\b", issued)
+        if m:
+            year = int(m.group(1))
+
+        if not title:
+            return None
+
+        return {
+            "media_type":     "book",
+            "isbn":           barcode,
+            "title":          title,
+            "authors":        authors,
+            "publisher":      None,   # not in search result; would need /v3/work/{id}
+            "published_year": year,
+            "genres":         [],
+            "language":       None,
+            "pages":          None,
+            "description":    None,
+            "cover_url":      None,
+            "source":         "trove",
         }
     except Exception:
         return None

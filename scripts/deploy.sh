@@ -19,6 +19,7 @@ echo ""
 : "${TMDB_API_KEY:?  Missing TMDB_API_KEY in .env}"
 
 GOOGLE_KEY="${GOOGLE_BOOKS_API_KEY:-none}"
+TROVE_KEY="${TROVE_API_KEY:-none}"
 
 echo "▶  AWS account: $(aws sts get-caller-identity --query Account --output text --region ${REGION})"
 echo ""
@@ -43,6 +44,13 @@ aws ssm put-parameter \
 aws ssm put-parameter \
   --name "/isbn-scanner/google-books-api-key" \
   --value "${GOOGLE_KEY}" \
+  --type String \
+  --overwrite \
+  --region "${REGION}" > /dev/null
+
+aws ssm put-parameter \
+  --name "/isbn-scanner/trove-api-key" \
+  --value "${TROVE_KEY}" \
   --type String \
   --overwrite \
   --region "${REGION}" > /dev/null
