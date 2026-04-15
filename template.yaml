@@ -291,8 +291,8 @@ Resources:
         EnrichSchedule:
           Type: Schedule
           Properties:
-            Schedule: rate(5 minutes)
-            Description: Enrich un-enriched DVDs and CDs every 5 minutes
+            Schedule: rate(1 day)
+            Description: Enrich un-enriched DVDs and CDs once daily
             Enabled: true
 
   # ── Lambda: retry_worker  EventBridge schedule ──────────────────────────
